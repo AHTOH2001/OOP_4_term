@@ -26,9 +26,18 @@ BIRTH_YEAR_CHOICES = [str(year) for year in range(1921, 2022)]
 
 
 class ClientRegisterForm(forms.ModelForm):
+    # username = forms.CharField(blank=True, max_length=150)
+    # email = forms.EmailField(verbose_name='Адрес E-mail', max_length=150, unique=True,
+    #                          widget=forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}))
+    # first_name = forms.CharField(verbose_name='Имя', max_length=70, widget=)
+    # last_name = forms.CharField(verbose_name='Фамилия', max_length=70, widget=)
+    # password = forms.CharField(verbose_name='Пароль', max_length=128, widget=)
+
     class Meta:
         model = Client
-        exclude = ('is_active', 'group', 'last_login', 'register_datetime', 'username')
+        fields = (
+            'email', 'first_name', 'last_name', 'date_of_birth', 'address', 'mobile_phone', 'home_phone', 'password')
+        # exclude = ('is_active', 'group', 'last_login', 'register_datetime', 'username')
         widgets = {
             'email': forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -86,15 +95,16 @@ class ClientRegisterForm(forms.ModelForm):
         )
 
     def save(self, request=None, commit=True):
+        user = User.objects.create_user(username=self.cleaned_data['email'],
+                                        email=self.cleaned_data['email'],
+                                        password=self.cleaned_data['password'],
+                                        first_name=self.cleaned_data['first_name'],
+                                        last_name=self.cleaned_data['last_name'],
+                                        is_active=False)
+
         super().save(commit=commit)
 
-        # user = User.objects.create_user(username=f'Клиент_{self.instance.id}',
-        #                                 email=self.cleaned_data['email'],
-        #                                 password=self.cleaned_data['password'],
-        #                                 first_name=self.cleaned_data['first_name'],
-        #                                 last_name=self.cleaned_data['last_name'],
-        #                                 is_active=False)
-        Client.objects.filter(email=self.cleaned_data['email']).update(username=self.cleaned_data['email'])
+        Client.objects.filter(email=self.cleaned_data['email']).update(user=user)
 
         return self.instance
 
@@ -135,16 +145,16 @@ class ClientAuthorizationForm(AuthenticationForm):
         )
 
     # TODO try del field username from client
-    def clean(self):
-        email = self.cleaned_data.get('username')
-        password = self.cleaned_data.get('password')
-
-        if email is not None and password:
-            try:
-                self.user_cache = Client.objects.get(email=email, password=password)
-            except Client.DoesNotExist:
-                raise self.get_invalid_login_error()
-            else:
-                self.confirm_login_allowed(self.user_cache)
-
-        return self.cleaned_data
+    # def clean(self):
+    #     email = self.cleaned_data.get('username')
+    #     password = self.cleaned_data.get('password')
+    #
+    #     if email is not None and password:
+    #         try:
+    #             self.user_cache = Client.objects.get(email=email, password=password)
+    #         except Client.DoesNotExist:
+    #             raise self.get_invalid_login_error()
+    #         else:
+    #             self.confirm_login_allowed(self.user_cache)
+    #
+    #     return self.cleaned_data

@@ -1,10 +1,12 @@
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils import timezone
 from django.contrib.auth import login, logout
 from django import urls
+
 
 # from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 
@@ -68,7 +70,7 @@ def register_complete(request):
         code = request.GET['code'].replace(' ', '+')
         if get_code(email, 'abs', 20) == code:
             # Delete outdated clients
-            Client.objects.filter(register_datetime__lt=timezone.now() - time_for_registration,
+            Client.objects.filter(date_joined__lt=timezone.now() - time_for_registration,
                                   is_active=False).delete()
             try:
                 if Client.objects.get(email=email).is_active is True:
@@ -76,6 +78,7 @@ def register_complete(request):
                 else:
                     messages.success(request, 'Пользователь успешно подтверждён, осталось только авторизоваться')
                     Client.objects.filter(email=email).update(is_active=True)
+                    User.objects.filter(email=email).update(is_active=True)
                     return redirect('authorize')
             except Client.DoesNotExist:
                 messages.error(request, 'По всей видимости ссылка регистрации просрочена')

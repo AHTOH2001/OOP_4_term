@@ -82,15 +82,15 @@ class ClientGroup(models.Model):
         return self.name
 
 
-class Client(AbstractBaseUser):
-    # user = models.ForeignKey(User, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
-    # user = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE)
-    username = models.CharField(blank=True, max_length=150)
-    email = models.EmailField(verbose_name='Адрес E-mail', max_length=150, unique=True)
+class Client(AbstractUser):
+    # user = models.ForeignKey(UserModel, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
+    # username = models.CharField(blank=True, max_length=150)
+    # email = models.EmailField(verbose_name='Адрес E-mail', max_length=150, unique=True)
     # help_text='Для регистрации укажите пожалуйста свой адрес электронной почты (E-mail)')
 
-    first_name = models.CharField(verbose_name='Имя', max_length=70)
-    last_name = models.CharField(verbose_name='Фамилия', max_length=70)
+    # first_name = models.CharField(verbose_name='Имя', max_length=70)
+    # last_name = models.CharField(verbose_name='Фамилия', max_length=70)
 
     date_of_birth = models.DateField(verbose_name='Дата рождения', blank=True, null=True)
 
@@ -98,17 +98,20 @@ class Client(AbstractBaseUser):
     mobile_phone = models.CharField(max_length=28, verbose_name='Мобильный номер', unique=True)
     home_phone = models.CharField(max_length=28, verbose_name='Домашний номер', unique=True, blank=True, null=True)
     group = models.ForeignKey(ClientGroup, on_delete=models.CASCADE, verbose_name='Группа', null=True)
-    password = models.CharField(verbose_name='Пароль', max_length=128)
+    user_permissions = None
+    groups = None
+    # password = models.CharField(verbose_name='Пароль', max_length=128)
     is_active = models.BooleanField(verbose_name='Активен', default=False)
-    last_login = models.DateTimeField(verbose_name='Дата и время последнего входа', null=True)
-    register_datetime = models.DateTimeField(verbose_name='Дата и время регистрации', default=timezone.now)
+
+    # last_login = models.DateTimeField(verbose_name='Дата и время последнего входа', null=True)
+    # register_datetime = models.DateTimeField(verbose_name='Дата и время регистрации', default=timezone.now)
 
     # EMAIL_FIELD = 'email'
-    USERNAME_FIELD = 'username'
+    # USERNAME_FIELD = 'username'
     # REQUIRED_FIELDS = ['email']
 
     def __str__(self):
-        return f'Клиент {self.first_name} {self.last_name}'
+        return f'{self.first_name} {self.last_name}'
 
     class Meta(AbstractUser.Meta):
         swappable = 'mainapp.models.Client'
