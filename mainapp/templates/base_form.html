@@ -11,14 +11,14 @@
         <div class="col-lg-9">
             {% include 'include/_messages.html' %}
 
-            <div class="row">
+{#            <div class="row">#}
                 <form method="post">
                     {% csrf_token %}
                     <br>
                     {% block form %}{% endblock %}
                     {% block button %}{% endblock %}
                 </form>
-            </div>
+
         </div>
     </div>
 {% endblock %}

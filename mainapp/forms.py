@@ -26,31 +26,34 @@ BIRTH_YEAR_CHOICES = [str(year) for year in range(1921, 2022)]
 
 
 class ClientRegisterForm(forms.ModelForm):
-    # username = forms.CharField(blank=True, max_length=150)
-    # email = forms.EmailField(verbose_name='Адрес E-mail', max_length=150, unique=True,
-    #                          widget=forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}))
-    # first_name = forms.CharField(verbose_name='Имя', max_length=70, widget=)
-    # last_name = forms.CharField(verbose_name='Фамилия', max_length=70, widget=)
-    # password = forms.CharField(verbose_name='Пароль', max_length=128, widget=)
+    # username = forms.CharField(blank=True, max_length=150, unique=True, )
+    email = forms.EmailField(label='Адрес E-mail', max_length=150,
+                             widget=forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}),
+                             help_text='Для регистрации укажите пожалуйста свой актуальный адрес электронной почты (E-mail)')
+    first_name = forms.CharField(label='Имя', max_length=70,
+                                 widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(label='Фамилия', max_length=70,
+                                widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(label='Пароль', max_length=128,
+                               widget=forms.PasswordInput(attrs={'class': 'form-control'}))
 
     class Meta:
         model = Client
-        fields = (
-            'email', 'first_name', 'last_name', 'date_of_birth', 'address', 'mobile_phone', 'home_phone', 'password')
-        # exclude = ('is_active', 'group', 'last_login', 'register_datetime', 'username')
+        fields = ['email', 'first_name', 'last_name', 'date_of_birth', 'address', 'mobile_phone', 'home_phone',
+                  'password']
         widgets = {
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            # 'email': forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}),
+            # 'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            # 'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'date_of_birth': forms.SelectDateWidget(attrs={'class': 'form-control'}, years=BIRTH_YEAR_CHOICES),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
             'mobile_phone': forms.TextInput(attrs={'class': 'form-control'}),
             'home_phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'password': forms.PasswordInput(attrs={'class': 'form-control'})
+            # 'password': forms.PasswordInput(attrs={'class': 'form-control'})
         }
-        help_texts = {
-            'email': 'Для регистрации укажите пожалуйста свой адрес электронной почты (E-mail)',
-        }
+        # help_texts = {
+        #     'email': 'Для регистрации укажите пожалуйста свой адрес электронной почты (E-mail)',
+        # }
 
     def clean_email(self):
         return self.cleaned_data['email'].lower()
@@ -95,18 +98,23 @@ class ClientRegisterForm(forms.ModelForm):
         )
 
     def save(self, request=None, commit=True):
-        user = User.objects.create_user(username=self.cleaned_data['email'],
-                                        email=self.cleaned_data['email'],
-                                        password=self.cleaned_data['password'],
-                                        first_name=self.cleaned_data['first_name'],
-                                        last_name=self.cleaned_data['last_name'],
-                                        is_active=False)
+        try:
+            user = User.objects.create_user(username=self.cleaned_data['email'],
+                                            email=self.cleaned_data['email'],
+                                            password=self.cleaned_data['password'],
+                                            first_name=self.cleaned_data['first_name'],
+                                            last_name=self.cleaned_data['last_name'],
+                                            is_active=False)
 
-        super().save(commit=commit)
+            client = super().save(commit=False)
+            client.user = user
+            client.save()
+            self.save_m2m()
+        except Exception as e:
+            raise ValidationError(e.args)
+        # Client.objects.filter(email=self.cleaned_data['email']).update(user=user)
 
-        Client.objects.filter(email=self.cleaned_data['email']).update(user=user)
-
-        return self.instance
+        return self.instance, self.cleaned_data['password']
 
 
 # TODO забыли пароль

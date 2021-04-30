@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load field_name %}
+{% block title %}
+    {{ book.name }} - {{ block.super }}
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-4">
+            <img src="{{ book.image.url }}" class="img-fluid">
+        </div>
+        <div class="col-md-8">
+            {% include 'include/_messages.html' %}
+            <h3>{{ book.name }}</h3>
+            <p>{% get_field_name book 'rental_price' %}: {{ book.rental_price }} у.е.</p>
+            <p>{% get_field_name book 'collateral_price' %}: {{ book.collateral_price }} у.е.</p>
+            <p>{% get_field_name book 'amount' %}: {{ book.amount }}</p>
+            <p>{% get_field_name book 'author' %}: <a href="{{ book.author.get_absolute_url }}">{{ book.author }}</a></p>
+            <p>{% get_field_name book 'genre' %}: <a href="{{ book.genre.get_absolute_url }}">{{ book.genre }}</a></p>
+            <p>{% get_field_name book 'desc' %}: {{ book.desc }}</p>
+
+            <hr>
+            {#            <a href="{% url 'add_to_cart' ct_model=ct_model slug=product.slug %}">#}
+            {#                <button class="btn btn-danger">Добавить в корзину</button>#}
+            {#            </a>#}
+        </div>
+        {#        <p class="mt-4">Характеристики:</p>#}
+        {##}
+        {#        {{ product|product_spec }}#}
+
+    </div>
+
+{% endblock %}

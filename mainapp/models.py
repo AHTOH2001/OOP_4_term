@@ -6,7 +6,10 @@ from django.contrib.auth import get_user_model
 from django.forms import ModelForm, ValidationError
 
 from PIL import Image
+from django.urls import reverse
 from django.utils import timezone
+import pytils.translit
+from .settings import default_collateral_price_less_than_rental_price_by as koef
 
 UserModel = get_user_model()
 
@@ -16,7 +19,7 @@ class GenreForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['image'].help_text = 'Загружайте изображения с минимальным разрешением {}x{}'.format(
+        self.fields['name'].help_text = 'Загружайте изображения с минимальным разрешением {}x{}'.format(
             *self.MIN_RESOLUTION)
 
     def clean_image(self):
@@ -32,43 +35,87 @@ class GenreForm(ModelForm):
 class Genre(models.Model):
     form = GenreForm
 
-    name = models.CharField(max_length=100, verbose_name='Название жанра')
-    books_amount = models.IntegerField(verbose_name='Количество книг жанра')
-    desc = models.TextField(verbose_name='Описание жанра', null=True)
+    name = models.CharField(max_length=100, verbose_name='Название жанра', unique=True)
+    books_amount = models.IntegerField(verbose_name='Количество книг жанра', editable=False, default=0)
+    desc = models.TextField(verbose_name='Описание жанра', blank=True)
     status = models.BooleanField(verbose_name='Статус', default=True)
-    slug = models.SlugField(unique=True)
-    image = models.ImageField(verbose_name='Изображение')
+    slug = models.SlugField(unique=True, blank=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
+
+    def clean_fields(self, exclude=None):
+        if self.slug == '':
+            self.slug = pytils.translit.translify(self.name).replace(' ', '-')
+        super(Genre, self).clean_fields(exclude=exclude)
+
+    def get_absolute_url(self):
+        return reverse('genre_detail', kwargs={'slug': self.slug})
 
 
 class Author(models.Model):
-    name = models.CharField(max_length=100, verbose_name='ФИО автора')
-    books_amount = models.IntegerField(verbose_name='Количество книг автора')
-    desc = models.TextField(verbose_name='Описание автора', null=True)
+    name = models.CharField(max_length=100, verbose_name='ФИО автора', unique=True)
+    books_amount = models.IntegerField(verbose_name='Количество книг автора', editable=False, default=0)
+    desc = models.TextField(verbose_name='Описание автора', blank=True)
     status = models.BooleanField(verbose_name='Статус', default=True)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True)
     image = models.ImageField(verbose_name='Изображение')
 
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = 'Автор'
+        verbose_name_plural = 'Авторы'
 
+    # def clean_slug(self):
+    #     raise Exception('clean_slug')
+    #     pass
+
+    def clean_fields(self, exclude=None):
+        if self.slug == '':
+            self.slug = pytils.translit.translify(self.name).replace(' ', '-')
+        super(Author, self).clean_fields(exclude=exclude)
+
+    def get_absolute_url(self):
+        return reverse('author_detail', kwargs={'slug': self.slug})
+
+
+# TODO add help text to fields in admin
 class Book(models.Model):
-    name = models.CharField(max_length=100, verbose_name='Заголовок книги')
+    name = models.CharField(max_length=100, verbose_name='Заголовок книги', unique=True)
     author = models.ForeignKey(Author, verbose_name='Автор', on_delete=models.CASCADE)
     genre = models.ForeignKey(Genre, verbose_name='Жанр', on_delete=models.CASCADE)
-    collateral_price = models.DecimalField(verbose_name='Залоговая стоимость', max_digits=9, decimal_places=2)
+    collateral_price = models.DecimalField(verbose_name='Залоговая стоимость', max_digits=9, decimal_places=2,
+                                           blank=True)
     rental_price = models.DecimalField(verbose_name='Стоимость проката', max_digits=9, decimal_places=2)
-    amount = models.IntegerField(verbose_name='Количество книг')
-    desc = models.TextField(verbose_name='Описание книги', null=True)
+    amount = models.IntegerField(verbose_name='Количество', default=0, blank=True)
+    desc = models.TextField(verbose_name='Описание книги', blank=True)
     status = models.BooleanField(verbose_name='Статус', default=True)
-    slug = models.SlugField(unique=True)
-    image = models.ImageField()
+    slug = models.SlugField(unique=True, blank=True)
+    image = models.ImageField(verbose_name='Изображение')
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'Книга'
+        verbose_name_plural = 'Книги'
+
+    def get_absolute_url(self):
+        return reverse('book_detail', kwargs={'slug': self.slug})
+
+    def clean_fields(self, exclude=None):
+        if self.slug == '':
+            self.slug = pytils.translit.translify(self.name).replace(' ', '-')
+        if self.collateral_price is None:
+            self.collateral_price = round(self.rental_price / koef, 2)
+
+        super(Book, self).clean_fields(exclude=exclude)
 
 
 class ClientGroup(models.Model):
@@ -81,40 +128,9 @@ class ClientGroup(models.Model):
     def __str__(self):
         return self.name
 
-
-class Client(AbstractUser):
-    # user = models.ForeignKey(UserModel, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
-    user = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
-    # username = models.CharField(blank=True, max_length=150)
-    # email = models.EmailField(verbose_name='Адрес E-mail', max_length=150, unique=True)
-    # help_text='Для регистрации укажите пожалуйста свой адрес электронной почты (E-mail)')
-
-    # first_name = models.CharField(verbose_name='Имя', max_length=70)
-    # last_name = models.CharField(verbose_name='Фамилия', max_length=70)
-
-    date_of_birth = models.DateField(verbose_name='Дата рождения', blank=True, null=True)
-
-    address = models.CharField(max_length=255, verbose_name='Адрес')
-    mobile_phone = models.CharField(max_length=28, verbose_name='Мобильный номер', unique=True)
-    home_phone = models.CharField(max_length=28, verbose_name='Домашний номер', unique=True, blank=True, null=True)
-    group = models.ForeignKey(ClientGroup, on_delete=models.CASCADE, verbose_name='Группа', null=True)
-    user_permissions = None
-    groups = None
-    # password = models.CharField(verbose_name='Пароль', max_length=128)
-    is_active = models.BooleanField(verbose_name='Активен', default=False)
-
-    # last_login = models.DateTimeField(verbose_name='Дата и время последнего входа', null=True)
-    # register_datetime = models.DateTimeField(verbose_name='Дата и время регистрации', default=timezone.now)
-
-    # EMAIL_FIELD = 'email'
-    # USERNAME_FIELD = 'username'
-    # REQUIRED_FIELDS = ['email']
-
-    def __str__(self):
-        return f'{self.first_name} {self.last_name}'
-
-    class Meta(AbstractUser.Meta):
-        swappable = 'mainapp.models.Client'
+    class Meta:
+        verbose_name = 'Группа клиентов'
+        verbose_name_plural = 'Группы клиентов'
 
 
 class Status(models.IntegerChoices):
@@ -128,9 +144,37 @@ class Status(models.IntegerChoices):
 class Basket(models.Model):
     books = models.ManyToManyField(Book, blank=True, verbose_name='Книги в корзине')
     status = models.IntegerField(choices=Status.choices, verbose_name='Статус')
-    client = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE)
-    return_date = models.DateTimeField(verbose_name='Дата и время возврата')
-    date_of_taking = models.DateTimeField(verbose_name='Дата и время взятия')
+    # client = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE)
+    return_date = models.DateTimeField(verbose_name='Дата и время возврата', null=True)
+    date_of_taking = models.DateTimeField(verbose_name='Дата и время взятия', null=True)
 
     def __str__(self):
-        return f'Корзина клиента {self.client} от {self.date_of_taking}'
+        return f'Корзина клиента от {self.date_of_taking} с {len(self.books)} книгами'
+
+    class Meta:
+        verbose_name = 'Корзина'
+        verbose_name_plural = 'Корзины'
+
+
+class Client(models.Model):
+    user = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
+
+    date_of_birth = models.DateField(verbose_name='Дата рождения', blank=True, null=True)
+
+    address = models.CharField(max_length=255, verbose_name='Адрес')
+    mobile_phone = models.CharField(max_length=28, verbose_name='Мобильный номер', unique=True)
+    home_phone = models.CharField(max_length=28, verbose_name='Домашний номер', unique=True, blank=True, null=True)
+    group = models.ForeignKey(ClientGroup, on_delete=models.CASCADE, verbose_name='Группа', null=True)
+    baskets = models.ManyToManyField(Basket, verbose_name='Корзины клиента')
+
+    def __str__(self):
+        # return f'{self.user.first_name} {self.last_name}'
+        return str(self.user)
+
+    class Meta(AbstractUser.Meta):
+        verbose_name = 'Клиент'
+        verbose_name_plural = 'Клиенты'
+
+    def get_my_current_basket(self):
+        basket = Basket.objects.get(client=self, status=Status.IN_PROCESS)
+        return basket
