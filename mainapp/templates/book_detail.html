@@ -1,24 +1,32 @@
 {% extends 'base.html' %}
-{% load field_name %}
+{% load tags %}
 {% block title %}
     {{ book.name }} - {{ block.super }}
 {% endblock %}
-
+{#TODO слайдер изображений книг в карточке книги#}
 {% block content %}
     <div class="row">
         <div class="col-md-4">
-            <img src="{{ book.image.url }}" class="img-fluid">
+            <img src="{{ book.image.url }}" style="height: 500px;" class="img-fluid">
         </div>
         <div class="col-md-8">
             {% include 'include/_messages.html' %}
             <h3>{{ book.name }}</h3>
-            <p>{% get_field_name book 'rental_price' %}: {{ book.rental_price }} у.е.</p>
-            <p>{% get_field_name book 'collateral_price' %}: {{ book.collateral_price }} у.е.</p>
-            <p>{% get_field_name book 'amount' %}: {{ book.amount }}</p>
-            <p>{% get_field_name book 'author' %}: <a href="{{ book.author.get_absolute_url }}">{{ book.author }}</a></p>
+            {% if request.user|should_show_price %}
+                <p>{% get_field_name book 'rental_price' %}: {{ book.rental_price|calculate_price:request.user }} у.е.</p>
+                <p>{% get_field_name book 'collateral_price' %}: {{ book.collateral_price|calculate_price:request.user }} у.е.</p>
+                <p>{% get_field_name book 'amount' %}: {{ book.amount }}</p>
+            {% endif %}
+            <p>{% get_field_name book 'author' %}: <a href="{{ book.author.get_absolute_url }}">{{ book.author }}</a>
+            </p>
             <p>{% get_field_name book 'genre' %}: <a href="{{ book.genre.get_absolute_url }}">{{ book.genre }}</a></p>
             <p>{% get_field_name book 'desc' %}: {{ book.desc }}</p>
-
+            {% if request.user.is_authenticated and request.user|should_show_price and not request.user|is_administrator %}
+                <form action="?add_to_basket" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning btn-block">Добавить в корзину</button>
+                </form>
+            {% endif %}
             <hr>
             {#            <a href="{% url 'add_to_cart' ct_model=ct_model slug=product.slug %}">#}
             {#                <button class="btn btn-danger">Добавить в корзину</button>#}

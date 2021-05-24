@@ -4,11 +4,12 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth import get_user_model
 from django.forms import ModelForm, ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from PIL import Image
 from django.urls import reverse
-from django.utils import timezone
 import pytils.translit
+from django.contrib.auth.models import User
 from .settings import default_collateral_price_less_than_rental_price_by as koef
 
 UserModel = get_user_model()
@@ -119,11 +120,12 @@ class Book(models.Model):
 
 
 class ClientGroup(models.Model):
-    name = models.CharField(max_length=100, verbose_name='Название')
-    discount = models.IntegerField(verbose_name='Скидка')
-    clients_amount = models.IntegerField(verbose_name='Количество клиентов')
-    show_prices = models.BooleanField(verbose_name='Показывать ли цены', default=True)
-    status = models.BooleanField(verbose_name='Статус', default=True)
+    name = models.CharField(max_length=100, verbose_name='Название', unique=True)
+    discount = models.IntegerField(verbose_name='Скидка в процентах', default=0,
+                                   validators=[MinValueValidator(-100), MaxValueValidator(100)])
+    clients_amount = models.IntegerField(verbose_name='Количество клиентов', editable=False, default=0)
+    show_prices = models.BooleanField(verbose_name='Показывать ли цены', default=False)
+    status = models.BooleanField(verbose_name='Статус', default=True, editable=False)
 
     def __str__(self):
         return self.name
@@ -145,11 +147,31 @@ class Basket(models.Model):
     books = models.ManyToManyField(Book, blank=True, verbose_name='Книги в корзине')
     status = models.IntegerField(choices=Status.choices, verbose_name='Статус')
     # client = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE)
-    return_date = models.DateTimeField(verbose_name='Дата и время возврата', null=True)
-    date_of_taking = models.DateTimeField(verbose_name='Дата и время взятия', null=True)
+    return_date = models.DateTimeField(verbose_name='Дата и время возврата', null=True, blank=True)
+    date_of_taking = models.DateTimeField(verbose_name='Дата и время взятия', null=True, blank=True)
 
     def __str__(self):
-        return f'Корзина клиента от {self.date_of_taking} с {len(self.books)} книгами'
+        owner = 'Not found'
+        for client in Client.objects.all():
+            for basket in client.baskets.all():
+                if self == basket:
+                    owner = client
+
+        status = None
+        for st in Status.choices:
+            if st[0] == self.status:
+                status = st[1]
+
+        return f'{status} корзина клиента {owner} с {len(self.books.all())} книгами'
+
+    def __copy__(self):
+        res = Basket.objects.create(status=self.status, return_date=self.return_date,
+                                    date_of_taking=self.date_of_taking)
+        # res = Basket()
+        # res.books = self.books
+        books = self.books.all()
+        res.books.set(books)
+        return res
 
     class Meta:
         verbose_name = 'Корзина'
@@ -157,7 +179,7 @@ class Basket(models.Model):
 
 
 class Client(models.Model):
-    user = models.ForeignKey(AUTH_USER_MODEL, verbose_name='Клиент', on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(AUTH_USER_MODEL, verbose_name=User.Meta.verbose_name, on_delete=models.CASCADE, null=True)
 
     date_of_birth = models.DateField(verbose_name='Дата рождения', blank=True, null=True)
 
@@ -168,13 +190,20 @@ class Client(models.Model):
     baskets = models.ManyToManyField(Basket, verbose_name='Корзины клиента')
 
     def __str__(self):
-        # return f'{self.user.first_name} {self.last_name}'
-        return str(self.user)
+        return f'{getattr(self.user, "first_name")} {getattr(self.user, "last_name")}'
 
     class Meta(AbstractUser.Meta):
         verbose_name = 'Клиент'
         verbose_name_plural = 'Клиенты'
 
-    def get_my_current_basket(self):
-        basket = Basket.objects.get(client=self, status=Status.IN_PROCESS)
-        return basket
+
+class SliderImages(models.Model):
+    image = models.ImageField(verbose_name='Изображение')
+    status = models.BooleanField(verbose_name='Статус', default=True)
+
+    def __str__(self):
+        return f'{self.image}'
+
+    class Meta(AbstractUser.Meta):
+        verbose_name = 'Изображение слайдера'
+        verbose_name_plural = 'Изображения слайдера'

@@ -7,6 +7,7 @@ from django.utils.datastructures import MultiValueDictKeyError
 from django.utils import timezone
 from django.contrib.auth import login, logout
 from django import urls
+import copy
 
 # from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 
@@ -14,23 +15,47 @@ from django import urls
 from django.views.generic import DetailView
 
 from CheekLit import settings
-from .utils import get_code
-from .models import Client, Book, Author, Genre, Basket
+from .utils import get_code, is_administrator, should_show_price
+from .models import Client, Book, Author, Genre, Basket, Status, SliderImages
 from .forms import ClientRegisterForm, ClientAuthorizationForm
 from .settings import time_for_registration
 
 
 def home(request):
     books = Book.objects.filter(status=True).order_by('-amount')
-    return render(request, 'home.html', {'books': books[:6]})
+    slider_images = SliderImages.objects.filter(status=True)
+    # return render(request, 'home.html', {'books': books, 'is_administrator': is_administrator(request.user)})
+    return render(request, 'home.html',
+                  {'books': books, 'genres': Genre.objects.all(), 'authors': Author.objects.all(),
+                   'slider_images': slider_images})
 
 
-class BookDetailView(DetailView):
-    queryset = Book.objects.all()
-    model = Book
-    context_object_name = 'book'
-    template_name = 'book_detail.html'
-    slug_url_kwarg = 'slug'
+def book_detail(request, slug):
+    current_book = Book.objects.get(slug=slug)
+    if request.method == 'POST':
+        if 'add_to_basket' in request.GET:
+            if is_administrator(request.user):
+                raise Http404('Administration does not have a basket')
+            client = request.user.client_set.get()
+            current_basket, is_created = client.baskets.get_or_create(status=Status.IN_PROCESS)
+            if should_show_price(request.user):
+                current_basket.books.add(current_book)
+                messages.success(request, 'Книга успешно добавлена в корзину')
+    return render(request, 'book_detail.html', {'book': current_book})
+    # return super(BookDetailView, self).get(request, *args, **kwargs)
+
+
+# class BookDetailView(DetailView):
+#     queryset = Book.objects.all()
+#     model = Book
+#     context_object_name = 'book'
+#     template_name = 'book_detail.html'
+#     slug_url_kwarg = 'slug'
+#
+#     def post(self, request, *args, **kwargs):
+#         pass
+#         # context = super().get_context_data(object=self.object)
+#         # return super().render_to_response(context)
 
 
 class AuthorDetailView(DetailView):
@@ -88,7 +113,8 @@ def register(request):
             messages.error(request, 'Некоторые данные введены неверно')
     else:
         form = ClientRegisterForm()
-    return render(request, 'register.html', {'form': form})
+    return render(request, 'register.html',
+                  {'form': form, 'genres': Genre.objects.all(), 'authors': Author.objects.all()})
 
 
 def register_complete(request):
@@ -129,7 +155,8 @@ def authorize(request):
             messages.error(request, 'Некоторые данные введены неверно')
     else:
         form = ClientAuthorizationForm()
-    return render(request, 'authorize.html', {'form': form})
+    return render(request, 'authorize.html',
+                  {'form': form, 'genres': Genre.objects.all(), 'authors': Author.objects.all()})
 
 
 def client_logout(request):
@@ -151,8 +178,49 @@ def contact(request):
 
 def basket(request):
     if request.user.is_authenticated:
-        client = Client.objects.get(user=request.user)
-        client.get_my_current_basket()
-        return render(request, 'basket.html', {'book': Book, 'basket': Basket})
+        if is_administrator(request.user):
+            raise Http404('Administration does not have a basket')
+
+        client = request.user.client_set.get()
+        current_basket, is_created = client.baskets.get_or_create(status=Status.IN_PROCESS)
+
+        if not should_show_price(request.user):
+            current_basket.books.clear()
+
+        if request.method == 'POST':
+            if 'delete_book' in request.GET:
+                current_basket.books.remove(request.GET['delete_book'])
+            if 'clear' in request.GET:
+                saved_basket = copy.copy(current_basket)
+                saved_basket.status = Status.ABANDONED
+                Basket.objects.filter(client=client, status=Status.ABANDONED).delete()
+                saved_basket.save()
+                client.baskets.add(saved_basket)
+                current_basket.books.clear()
+                # client.baskets.create(status=Status.ABANDONED, )
+            if 'restore' in request.GET:
+                try:
+                    client.baskets.get(status=Status.ABANDONED)
+                except Basket.DoesNotExist:
+                    raise Http404('Not found abandoned basket')
+                client.baskets.filter(status=Status.IN_PROCESS).delete()
+                client.baskets.filter(status=Status.ABANDONED).update(status=Status.IN_PROCESS)
+                current_basket = client.baskets.get(status=Status.IN_PROCESS)
+        return render(request, 'basket.html', {'BookModel': Book, 'books_in_basket': current_basket.books.all()})
+    else:
+        raise Http404('User is not authenticated')
+
+
+def order(request):
+    if request.user.is_authenticated and should_show_price(request.user):
+        if is_administrator(request.user):
+            raise Http404('Administration does not have a basket')
+
+        client = request.user.client_set.get()
+        current_basket, is_created = client.baskets.get_or_create(status=Status.IN_PROCESS)
+        current_basket.status = Status.ON_HANDS
+        current_basket.date_of_taking = timezone.now()
+        current_basket.save()
+        return render(request, 'order.html')
     else:
         raise Http404('User is not authenticated')

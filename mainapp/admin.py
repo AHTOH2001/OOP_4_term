@@ -9,3 +9,5 @@ admin.site.register(Book)
 admin.site.register(ClientGroup)
 admin.site.register(Client)
 admin.site.register(Basket)
+admin.site.register(SliderImages)
+

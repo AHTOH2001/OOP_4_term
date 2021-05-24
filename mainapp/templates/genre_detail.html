@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% load field_name %}
+{% load tags %}
 {% block title %}
     {{ genre.name }} - {{ block.super }}
 {% endblock %}
 
 {% block content %}
     <div class="row">
-        <div class="col-md-4">
-            <img src="{{ genre.image.url }}" class="img-fluid">
-        </div>
+{#        <div class="col-md-4">#}
+{#            <img src="{{ genre.image.url }}" class="img-fluid">#}
+{#        </div>#}
         <div class="col-md-8">
             {% include 'include/_messages.html' %}
             <h3>{{ genre.name }}</h3>

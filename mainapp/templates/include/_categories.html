@@ -1,6 +1,15 @@
 <h1 class="my-4">CheekLit</h1>
 <div class="list-group">
-    <a href="#" class="list-group-item">Category 1</a>
-    <a href="#" class="list-group-item">Category 2</a>
-    <a href="#" class="list-group-item">Category 3</a>
+    <h3>Жанры</h3>
+    {% for genre in genres %}
+        <a href="{{ genre.get_absolute_url }}" class="list-group-item">{{ genre.name }}
+{#            ({{ genre.books_amount }})#}
+        </a>
+    {% endfor %}
+    <h2>Авторы</h2>
+    {% for author in authors %}
+        <a href="{{ author.get_absolute_url }}" class="list-group-item">{{ author.name }}
+{#            ({{ author.books_amount }})#}
+        </a>
+    {% endfor %}
 </div>

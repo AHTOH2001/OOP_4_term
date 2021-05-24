@@ -7,12 +7,13 @@ from django.utils.text import capfirst
 from django.core import validators
 from django import urls
 from django.utils.translation import gettext, gettext_lazy as _
+import copy
 
 from CheekLit import settings
 import re
 # from datetime import datetime, timedelta
 from . import views
-from .models import Client
+from .models import Client, ClientGroup
 from .settings import time_for_registration
 
 from .utils import get_code
@@ -108,6 +109,7 @@ class ClientRegisterForm(forms.ModelForm):
 
             client = super().save(commit=False)
             client.user = user
+            client.group, is_created = ClientGroup.objects.get_or_create(name='Гость')
             client.save()
             self.save_m2m()
         except Exception as e:
@@ -152,7 +154,6 @@ class ClientAuthorizationForm(AuthenticationForm):
             errors_on_separate_row=True,
         )
 
-    # TODO try del field username from client
     # def clean(self):
     #     email = self.cleaned_data.get('username')
     #     password = self.cleaned_data.get('password')

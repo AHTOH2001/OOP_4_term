@@ -1,44 +1,64 @@
 {% extends 'base.html' %}
-{% load field_name %}
+{% load tags %}
 {% block title %}
     Корзина - {{ block.super }}
 {% endblock %}
 
 {% block content %}
-    <table class="table table-striped">
-        <thead>
-        <tr>
-            <th scope="col">№</th>
-            <th scope="col">{% get_field_name book 'image' %}</th>
-            <th scope="col">{% get_field_name book 'name' %}</th>
-            <th scope="col">{% get_field_name book 'collateral_price' %}</th>
-            <th scope="col">{% get_field_name book 'rental_price' %}</th>
-            <th scope="col">{% get_field_name book 'amount' %}</th>
-        </tr>
-        </thead>
-        <tbody>
-
-        <tr>
-            <th scope="row">1</th>
-            <td>Mark</td>
-            <td>Otto</td>
-            <td>@mdo</td>
-            <td>@mdo</td>
-            <td>@mdo</td>
-            <td>@mdo</td>
-        </tr>
-        <tr>
-            <th scope="row">2</th>
-            <td>Jacob</td>
-            <td>Thornton</td>
-            <td>@fat</td>
-        </tr>
-        <tr>
-            <th scope="row">3</th>
-            <td colspan="2">Larry the Bird</td>
-            <td>@twitter</td>
-        </tr>
-        </tbody>
-    </table>
+    {% if not books_in_basket %}
+        <h3 class="text-center">Ваша корзина пуста</h3>
+        {% if request.user|is_have_abandoned_basket %}
+            <br>
+            <form action="?restore" method="post" class="text-center">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-block">Восстановить предыдущую корзину</button>
+            </form>
+        {% endif %}
+    {% else %}
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th scope="col">ID книги</th>
+                <th scope="col">{% get_field_name BookModel 'image' %}</th>
+                <th scope="col">{% get_field_name BookModel 'name' %}</th>
+                <th scope="col">{% get_field_name BookModel 'collateral_price' %}</th>
+                <th scope="col">{% get_field_name BookModel 'rental_price' %}</th>
+                <th scope="col">{% get_field_name BookModel 'amount' %}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for book in books_in_basket %}
+                <tr>
+                    <th scope="row">{{ book.id }}</th>
+                    <td><a href="{{ book.image.url }}"><img src="{{ book.image.url }}" alt="..." class="img-fluid"
+                                                            style="height: 200px;"></a></td>
+                    <td><a href="{{ book.get_absolute_url }}">{{ book.name }}</a></td>
+                    <td>{{ book.collateral_price|calculate_price:request.user }}</td>
+                    <td>{{ book.rental_price|calculate_price:request.user }}</td>
+                    <td>{{ book.amount }}</td>
+                    <td>
+                        <form action="?delete_book={{ book.id }}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-block">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+        <div class="row">
+            <div class="col">
+                <form action="?clear" method="post" class="text-center mb-5">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-block">Очистить корзину</button>
+                </form>
+            </div>
+            <div class="col">
+                <form action="{% url 'order' %}" method="post" class="text-center mb-5">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-block">Оформить заказ</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
 
 {% endblock %}
