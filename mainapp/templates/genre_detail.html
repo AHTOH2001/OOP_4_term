@@ -6,13 +6,11 @@
 
 {% block content %}
     <div class="row">
-{#        <div class="col-md-4">#}
-{#            <img src="{{ genre.image.url }}" class="img-fluid">#}
-{#        </div>#}
         <div class="col-md-8">
             {% include 'include/_messages.html' %}
             <h3>{{ genre.name }}</h3>
-            <p>{% get_field_name genre 'desc' %}: {{ genre.desc }}</p>
+            <p id="readable">{% get_field_name genre 'desc' %}: {{ genre.desc }}</p>
+            <button onclick="read_readable()">Зачитай</button>
 
             <hr>
             {#            <a href="{% url 'add_to_cart' ct_model=ct_model slug=product.slug %}">#}

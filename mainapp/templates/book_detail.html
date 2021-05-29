@@ -13,14 +13,17 @@
             {% include 'include/_messages.html' %}
             <h3>{{ book.name }}</h3>
             {% if request.user|should_show_price %}
-                <p>{% get_field_name book 'rental_price' %}: {{ book.rental_price|calculate_price:request.user }} у.е.</p>
-                <p>{% get_field_name book 'collateral_price' %}: {{ book.collateral_price|calculate_price:request.user }} у.е.</p>
+                <p>{% get_field_name book 'rental_price' %}: {{ book.rental_price|calculate_price:request.user }}
+                    у.е.</p>
+                <p>{% get_field_name book 'collateral_price' %}: {{ book.collateral_price|calculate_price:request.user }}
+                    у.е.</p>
                 <p>{% get_field_name book 'amount' %}: {{ book.amount }}</p>
             {% endif %}
             <p>{% get_field_name book 'author' %}: <a href="{{ book.author.get_absolute_url }}">{{ book.author }}</a>
             </p>
             <p>{% get_field_name book 'genre' %}: <a href="{{ book.genre.get_absolute_url }}">{{ book.genre }}</a></p>
-            <p>{% get_field_name book 'desc' %}: {{ book.desc }}</p>
+            <p id="readable">{% get_field_name book 'desc' %}: {{ book.desc }}</p>
+            <button onclick="read_readable()">Зачитай</button>
             {% if request.user.is_authenticated and request.user|should_show_price and not request.user|is_administrator %}
                 <form action="?add_to_basket" method="post">
                     {% csrf_token %}
